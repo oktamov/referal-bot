@@ -1,6 +1,6 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from data.config import url_yaml
+from data.config import url_yaml, get_channels
 
 
 def yes_no_keyboard(key):
@@ -40,3 +40,33 @@ def url_button():
     ]]
     are_you_sure_markup = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
     return are_you_sure_markup
+
+
+def subscribe_keyboard_invited(user_id):
+    channels = get_channels()
+    inline_keyboard = []
+
+    for sanoq, channel in enumerate(channels, start=1):
+        button = InlineKeyboardButton(text=f"{sanoq} - kanal", url=channel['link'])
+        inline_keyboard.append([button])
+
+    inline_keyboard.append([
+        InlineKeyboardButton(text="Obuna bo'ldim✅", callback_data=f"subscribe_true_{user_id}")
+    ])
+
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+def subscribe_keyboard():
+    channels = get_channels()
+    inline_keyboard = []
+
+    for sanoq, channel in enumerate(channels, start=1):
+        button = InlineKeyboardButton(text=f"{sanoq} - kanal", url=channel['link'])
+        inline_keyboard.append([button])
+
+    inline_keyboard.append([
+        InlineKeyboardButton(text="Obuna bo'ldim✅", callback_data="subscribe_true")
+    ])
+
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)

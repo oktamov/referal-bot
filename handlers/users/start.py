@@ -3,13 +3,28 @@ from aiogram.filters import CommandStart, CommandObject
 from aiogram.client.session.middlewares.request_logging import logger
 from aiogram.fsm.context import FSMContext
 
-from data.config import url_yaml
-from keyboards.inline.buttons import url_button
+from data.config import url_yaml, CHANNELS, get_channels
+from keyboards.inline.buttons import subscribe_keyboard_invited, subscribe_keyboard
 from keyboards.reply.base import pul_ishlash
-from loader import db
-from utils.extra_datas import make_title
+from loader import db, bot
 
 router = Router()
+
+
+async def is_user_subscribed(channels, user_id):
+    status = False
+    for channel in channels:
+        # Use the channel ID for the check (assuming the channel dictionary contains the 'id' field)
+        channel_id = channel['id']
+        try:
+            chat_member = await bot.get_chat_member(chat_id=channel_id, user_id=user_id)
+            if chat_member.status in ['member', 'administrator', 'creator']:
+                status = True
+        except Exception as e:
+            print(f"Error checking subscription for channel {channel_id}: {e}")
+            continue
+
+    return status
 
 
 @router.message(CommandStart())
@@ -23,25 +38,64 @@ async def start(message: types.Message, command: CommandObject, state: FSMContex
     username = message.from_user.username
 
     user = db.select_user(telegram_id=telegram_id)
-
-    if not user:
-        try:
-            if command.args:
-                invited_by_user = db.get_user_invited_count(int(command.args))
-                if invited_by_user:
-                    db.update_invite_current_history_count_plus_1(int(command.args))
-                    db.add_user_invite_member(int(command.args), message.from_user.id)
-                else:
-                    db.add_user_invite_count(int(command.args), 1, 1)
-                    db.add_user_invite_member(int(command.args), message.from_user.id)
-
-            db.add_user(full_name=full_name, username=username, telegram_id=telegram_id)
-        except Exception as error:
-            logger.info(error)
+    # args = message.text.split()[1:] if len(message.text.split()) > 1 else None
+    # print(url_yaml("channels"))
+    if await is_user_subscribed(channels=get_channels(), user_id=message.from_user.id):
+        if not user:
+            try:
+                if command.args:
+                    invited_by_user = db.get_user_invited_count(int(command.args))
+                    if invited_by_user:
+                        db.update_invite_current_history_count_plus_1(int(command.args))
+                        db.add_user_invite_member(int(command.args), message.from_user.id)
+                    else:
+                        db.add_user_invite_count(int(command.args), 1, 1)
+                        db.add_user_invite_member(int(command.args), message.from_user.id)
+                db.add_user(full_name=full_name, username=username, telegram_id=telegram_id)
+            except Exception as error:
+                logger.info(error)
+        await message.answer(
+            f"Assalomu alaykum {full_name}. \n\nBot orqali pul ishlash uchun referal havolangiz orqali do'stlaringizni "
+            f"botga taklf qilib har bir taklif qilgan do'stingizga {url_yaml['invited_credit']} so'mdan pul ishlang 🤑 "
+            f"",
+            reply_markup=pul_ishlash())
     else:
-        msg = f"[{make_title(full_name)}](tg://user?id={telegram_id}) bazaga oldin qo'shilgan."
+        if CHANNELS:
+            if command.args:
+                await message.answer(f" Botdan foydalanish uchun quyidagi kanallarga a'zo bo'ling! 👇👇👇",
+                                     reply_markup=subscribe_keyboard_invited(int(command.args)))
+            else:
+                await message.answer(f" Botdan foydalanish uchun quyidagi kanallarga a'zo bo'ling! 👇👇👇",
+                                     reply_markup=subscribe_keyboard())
+        else:
+            pass
 
-    await message.answer(f"Assalomu alaykum {full_name} ", reply_markup=pul_ishlash())
-    await message.answer(
-        f"Bot orqali open budjetga ovoz berib\nHar bir ovozingiz uchun {url_yaml['vote_credit']} so'mdan ishlab oling👇",
-        reply_markup=url_button())
+
+@router.callback_query(lambda c: c.data.startswith("subscribe_true_"))
+async def oldim(call: types.CallbackQuery):
+    await call.message.delete()
+    invited_user = call.data.split("_")[2]
+
+    if await is_user_subscribed(get_channels(), call.from_user.id):
+        await call.message.answer("Botdan foydalanishingiz mumkin😊", reply_markup=pul_ishlash())
+        invited_by_user = db.get_user_invited_count(invited_user)
+        if invited_by_user:
+            db.update_invite_current_history_count_plus_1(invited_user)
+            await bot.send_message(int(invited_user), text=f"Siz {call.from_user.get_mention(as_html=True)} "
+                                                           f"ni botga taklif qildingiz va 100 so'm taqdim etildi")
+        else:
+            db.add_user_invite_count(invited_user, 1, 1)
+            # await bot.send_message(int(invited_user), text=f"lif qildingiz va 100 so'm taqdim etildi")
+    else:
+        await call.message.answer("Iltimios! Foydalanish uchun quyidagi kanallarga a'zo bo'ling! 👇👇👇",
+                                  reply_markup=subscribe_keyboard_invited(call.from_user.id))
+
+
+@router.callback_query(lambda c: c.data == "subscribe_true")
+async def oldim(call: types.CallbackQuery):
+    await call.message.delete()
+    if await is_user_subscribed(get_channels(), call.from_user.id):
+        await call.message.answer("Botdan foydalanishingiz mumkin😊", reply_markup=pul_ishlash())
+    else:
+        await call.message.answer("Iltimios! Foydalanish uchun quyidagi kanallarga a'zo bo'ling! 👇👇👇",
+                                  reply_markup=subscribe_keyboard())

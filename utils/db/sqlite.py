@@ -57,6 +57,18 @@ class Database:
             )
 '''
         self.execute(sql, commit=True)
+    def create_table_group_add_member_count(self):
+        sql = '''
+            CREATE TABLE IF NOT EXISTS GroupMembers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                group_id INTEGER(50),
+                user_id INTEGER,
+                add_user_count INTEGER,
+                UNIQUE(group_id, user_id),
+                FOREIGN KEY (group_id) REFERENCES Groups (chat_id)
+            )
+        '''
+        self.execute(sql, commit=True)
 
     @staticmethod
     def format_args(sql, parameters: dict):

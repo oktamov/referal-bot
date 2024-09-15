@@ -11,12 +11,25 @@ from states.test import ReferalForm
 router = Router()
 
 
-# @router.message(F.text == "Pul ishlash💰")
-# async def make_money(message: types.Message):
-#     await message.answer("Pul ishlash uchun botga do'stlaringizni referal havolangiz orqali taklif qiling "
-#                          "va har bir taklif qilgan do'stingiz uchun 100 so'mdan💵 ishlang."
-#                          "\nReferal havolangizni olish uchun pastdagi referal havolani ustiga bosing.",
-#                          reply_markup=pul_ishlash())
+@router.message(F.text == "Pul chiqarish💰")
+async def make_money(message: types.Message):
+    invited_count = db.get_user_invited_count(message.from_user.id)
+    count = db.get_user_invited_count(message.from_user.id)
+    if not count:
+        count = 0
+    else:
+        count = count[0]
+    if invited_count:
+        my_money = invited_count[0] * url_yaml['invited_credit']
+        await message.answer(f"Sizning hisobingizda {my_money} so'm bor.\n"
+                             f"👨‍👩‍👦 Referal orqali qo'shilganlar: {count} dona\n"
+                             f"\nHisobingizda jami {url_yaml['min_balance']} so'm bo'lsa pulingizni chiqarib olishingiz mumkin",
+                             reply_markup=get_money())
+    else:
+        await message.answer("Sizning hisobingizda pul yo'q. \n"
+                             f"👨‍👩‍👦 Referal orqali qo'shilganlar: {count} dona\n"
+
+                             "\nReferal havola orqali do'stlaringizni taklif qiling va pul ishlang")
 
 
 @router.message(F.text == "To'lov kanali📜")
@@ -30,14 +43,8 @@ async def make_money(message: types.Message):
 
 @router.message(F.text == "Referal havola📎")
 async def referal_havola(message: types.Message):
-    count = db.get_user_invited_count(message.from_user.id)
-    if not count:
-        count = 0
-    else:
-        count = count[0]
     msg = f"""ℹ️ Referal manzil orqali do'stlaringizni botga taklif qiling va pul ishlab toping. 
 
-👨‍👩‍👦 Referal orqali qo'shilganlar: {count} dona
 
 Sizning referal manzilingiz 👇 """
     bot_properties = await bot.me()
@@ -47,13 +54,21 @@ Sizning referal manzilingiz 👇 """
 @router.message(F.text == "Balans💵")
 async def balans(message: types.Message):
     invited_count = db.get_user_invited_count(message.from_user.id)
+    count = db.get_user_invited_count(message.from_user.id)
+    if not count:
+        count = 0
+    else:
+        count = count[0]
     if invited_count:
         my_money = invited_count[0] * url_yaml['invited_credit']
-        await message.answer(f"Sizning hisobingizda {my_money} so'm bor."
+        await message.answer(f"Sizning hisobingizda {my_money} so'm bor.\n"
+                             f"👨‍👩‍👦 Referal orqali qo'shilganlar: {count} dona\n"
                              f"\nHisobingizda jami {url_yaml['min_balance']} so'm bo'lsa pulingizni chiqarib olishingiz mumkin",
                              reply_markup=get_money())
     else:
-        await message.answer("Sizning hisobingizda pul yo'q. "
+        await message.answer("Sizning hisobingizda pul yo'q. \n"
+                             f"👨‍👩‍👦 Referal orqali qo'shilganlar: {count} dona\n"
+
                              "\nReferal havola orqali do'stlaringizni taklif qiling va pul ishlang")
 
 
