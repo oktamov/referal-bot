@@ -57,6 +57,7 @@ class Database:
             )
 '''
         self.execute(sql, commit=True)
+
     def create_table_group_add_member_count(self):
         sql = '''
             CREATE TABLE IF NOT EXISTS GroupMembers (
@@ -76,6 +77,22 @@ class Database:
             f"{item} = ?" for item in parameters
         ])
         return sql, tuple(parameters.values())
+
+    def add_or_update_group_member(self, group_id: int, user_id: int):
+        # Foydalanuvchini jadvalga qo'shish yoki yangilash
+        sql = """
+        INSERT INTO GroupMembers(group_id, user_id, add_user_count)
+        VALUES (?, ?, 1)
+        ON CONFLICT(group_id, user_id) DO UPDATE SET add_user_count = add_user_count + 1
+        """
+        self.execute(sql, parameters=(group_id, user_id), commit=True)
+
+    def get_user_add_count(self, group_id: int, user_id: int):
+        sql = """
+        SELECT add_user_count FROM GroupMembers
+        WHERE group_id = ? AND user_id = ?
+        """
+        return self.execute(sql, parameters=(group_id, user_id), fetchone=True)
 
     def add_user(self, full_name: str, username: str, telegram_id: int):
 

@@ -18,3 +18,4 @@ class AdminState(StatesGroup):
 
 class ReferalForm(StatesGroup):
     CARD = State()
+    END = State()

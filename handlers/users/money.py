@@ -75,21 +75,35 @@ async def balans(message: types.Message):
 @router.callback_query(F.data == "pul_chiqarib_olish")
 async def pul_chiqarish(call: types.CallbackQuery, state: FSMContext):
     invited_count = db.get_user_invited_count(call.from_user.id)
+    count = url_yaml['group_member_count']
     if invited_count[0] >= url_yaml['min_balance'] / url_yaml['invited_credit']:
-        await call.message.answer("Telefon raqam yoki karta raqamingizni tashlang.")
+        guruh_button = types.InlineKeyboardMarkup(
+            inline_keyboard=[[types.InlineKeyboardButton(text="guruh", url="https://t.me/+JwIJ7S8hz3dhYTNi")],
+                             [types.InlineKeyboardButton(text="Qo'shdim ✅", callback_data="qoshdim")]])
+        await call.message.answer(f"Pul chiqarish uchun guruhga {count} ta odam qo'shing!", reply_markup=guruh_button)
         await state.set_state(ReferalForm.CARD)
     else:
         await call.message.answer("Hisobingizda yetarlicha pul yo'q,  "
                                   f"\nhisobingiz {url_yaml['min_balance']} so'mga yetganda pulingizni chiqarib olishingiz mumkin")
 
 
-@router.message(ReferalForm.CARD)
+@router.callback_query(F.data == "qoshdim", ReferalForm.CARD)
+async def get_card(call: types.CallbackQuery, state: FSMContext):
+    await call.message.answer(f"Karta yoki telefon raqam yuboring!")
+    await state.set_state(ReferalForm.END)
+
+
+@router.message(ReferalForm.END)
 async def get_card(message: types.Message, state: FSMContext):
-    await message.answer(f"{message.text}\nShu hisobga pul o'tkazilishiga ishonchingiz komilmi?", reply_markup=ha_yoq())
+    data = await state.get_data()
+    msg = f"""
+    Karta/telefon raqam: {message.text} 
+    """
+    await message.answer(f"{msg}\n\nUshbu kiritgan ma'lumotlaringiz to'g'rimi?", reply_markup=ha_yoq())
     await state.update_data(card=message.text)
 
 
-@router.callback_query(F.data == "Ha", ReferalForm.CARD)
+@router.callback_query(F.data == "Ha", ReferalForm.END)
 async def ha(call: types.CallbackQuery, state: FSMContext):
     count = db.get_user_invited_count(call.from_user.id)
     card = await state.get_data()
@@ -99,13 +113,12 @@ async def ha(call: types.CallbackQuery, state: FSMContext):
         f"\nO'tkazilishi kerak bo'lgan summa: {count[0] * url_yaml['invited_credit']} so'm\nKarta/telefon raqam: {card}")
 
     await bot.send_message(MONEY_ADMIN, msg, reply_markup=qabul_qilish(call.from_user.id), parse_mode='HTML')
-    await call.message.answer("""Ovoz berishni ustiga bosib ovoz bering va pul ishlang 💰
-
+    await call.message.answer("""
 Toʻlov 24 soatdan 48 soat ichida tashlab beriladi bemalol ungacha pul ishlashingiz mumkin 💸👍""")
     await state.clear()
 
 
-@router.callback_query(F.data == "Yoq", ReferalForm.CARD)
+@router.callback_query(F.data == "Yoq", ReferalForm.END)
 async def yoq(call: types.CallbackQuery, state: FSMContext):
     await call.message.answer("Bekor qilindi", reply_markup=pul_ishlash())
     await state.clear()

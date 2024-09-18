@@ -1,4 +1,4 @@
-from aiogram import Router, types
+from aiogram import Router, types, F
 from aiogram.filters import CommandStart, CommandObject
 from aiogram.client.session.middlewares.request_logging import logger
 from aiogram.fsm.context import FSMContext
@@ -11,10 +11,24 @@ from loader import db, bot
 router = Router()
 
 
+@router.message(F.chat.type.in_({"group", "supergroup"}) & F.new_chat_members)
+async def welcome_new_members(message: types.Message):
+    new_members = message.new_chat_members
+    for member in new_members:
+        await message.answer(f"Xush kelibsiz, {member.full_name}! Guruhimizga xush kelibsiz!")
+
+
+@router.message(F.chat.type.in_({"group", "supergroup"}))
+async def respond_in_group(message: types.Message):
+    if "salom" in message.text.lower():
+        await message.answer("Salom! Qanday yordam bera olaman?")
+    elif "rahmat" in message.text.lower():
+        await message.answer("Arzimaydi!")
+
+
 async def is_user_subscribed(channels, user_id):
     status = False
     for channel in channels:
-        # Use the channel ID for the check (assuming the channel dictionary contains the 'id' field)
         channel_id = channel['id']
         try:
             chat_member = await bot.get_chat_member(chat_id=channel_id, user_id=user_id)
@@ -99,3 +113,16 @@ async def oldim(call: types.CallbackQuery):
     else:
         await call.message.answer("Iltimios! Foydalanish uchun quyidagi kanallarga a'zo bo'ling! 👇👇👇",
                                   reply_markup=subscribe_keyboard())
+
+
+@router.message()
+async def on_new_member(message: types.Message):
+    for new_member in message.new_chat_members:
+        inviter_id = message.from_user.id
+        group_id = message.chat.id
+
+        db.add_or_update_group_member(group_id, inviter_id)
+
+        await message.answer(f"{message.from_user.full_name} guruhga {new_member.full_name} ni qo'shdi.")
+        await message.answer(
+            f"{message.from_user.full_name} hozirgacha {db.get_user_add_count(group_id, inviter_id)[0]} foydalanuvchini qo'shgan.")
