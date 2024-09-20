@@ -6,7 +6,7 @@ from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
-from keyboards.reply import reply_keyboard_for_admin
+from keyboards.reply import reply_keyboard_for_admin, majburiy_obuna
 from loader import db, bot
 from keyboards.inline.buttons import yes_no_keyboard
 from states.test import AdminState
@@ -25,6 +25,11 @@ async def get_all_users(message: types.Message):
 async def get_all_users(message: types.Message):
     users_count = db.count_users()
     await message.answer(f"Botda foydalanuvchilar soni: {users_count[0]}")
+
+
+@router.message(F.text == "📌Majburiy Obuna", IsBotAdminFilter(ADMINS))
+async def force_channel(message: types.Message):
+    await message.answer("🔝 Majburiy obunalar qo'shish bo'limi:", reply_markup=majburiy_obuna())
 
 
 @router.message(F.text == '✏️Url ni tahrirlash', IsBotAdminFilter(ADMINS))

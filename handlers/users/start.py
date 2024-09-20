@@ -1,4 +1,5 @@
 from aiogram import Router, types, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart, CommandObject
 from aiogram.client.session.middlewares.request_logging import logger
 from aiogram.fsm.context import FSMContext
@@ -26,19 +27,28 @@ async def respond_in_group(message: types.Message):
         await message.answer("Arzimaydi!")
 
 
-async def is_user_subscribed(channels, user_id):
-    status = False
+async def is_user_subscribed(user_id: int) -> bool:
+    channels = db.get_all_channels()
+    if not channels:
+        print("Hech qanday kanal mavjud emas.")
+        return True
+
     for channel in channels:
-        channel_id = channel['id']
+        channel_id = channel[1]
         try:
             chat_member = await bot.get_chat_member(chat_id=channel_id, user_id=user_id)
-            if chat_member.status in ['member', 'administrator', 'creator']:
-                status = True
-        except Exception as e:
-            print(f"Error checking subscription for channel {channel_id}: {e}")
+            if chat_member.status not in ['member', 'administrator', 'creator']:
+                return False
+
+        except TelegramBadRequest as e:
+            print(f"Telegram xatosi: {e}")
             continue
 
-    return status
+        except Exception as e:
+            print(f"Xato yuz berdi: {e}")
+            continue
+
+    return True
 
 
 @router.message(CommandStart())
@@ -52,9 +62,11 @@ async def start(message: types.Message, command: CommandObject, state: FSMContex
     username = message.from_user.username
 
     user = db.select_user(telegram_id=telegram_id)
+    if not user:
+        db.add_user(full_name=full_name, username=username, telegram_id=telegram_id)
     # args = message.text.split()[1:] if len(message.text.split()) > 1 else None
     # print(url_yaml("channels"))
-    if await is_user_subscribed(channels=get_channels(), user_id=message.from_user.id):
+    if await is_user_subscribed(user_id=message.from_user.id):
         if not user:
             try:
                 if command.args:
@@ -65,7 +77,6 @@ async def start(message: types.Message, command: CommandObject, state: FSMContex
                     else:
                         db.add_user_invite_count(int(command.args), 1, 1)
                         db.add_user_invite_member(int(command.args), message.from_user.id)
-                db.add_user(full_name=full_name, username=username, telegram_id=telegram_id)
             except Exception as error:
                 logger.info(error)
         await message.answer(
@@ -90,13 +101,12 @@ async def oldim(call: types.CallbackQuery):
     await call.message.delete()
     invited_user = call.data.split("_")[2]
 
-    if await is_user_subscribed(get_channels(), call.from_user.id):
+    if await is_user_subscribed(user_id=call.from_user.id):
         await call.message.answer("Botdan foydalanishingiz mumkin😊", reply_markup=pul_ishlash())
         invited_by_user = db.get_user_invited_count(invited_user)
         if invited_by_user:
             db.update_invite_current_history_count_plus_1(invited_user)
-            await bot.send_message(int(invited_user), text=f"Siz {call.from_user.get_mention(as_html=True)} "
-                                                           f"ni botga taklif qildingiz va 100 so'm taqdim etildi")
+
         else:
             db.add_user_invite_count(invited_user, 1, 1)
             # await bot.send_message(int(invited_user), text=f"lif qildingiz va 100 so'm taqdim etildi")
@@ -108,21 +118,8 @@ async def oldim(call: types.CallbackQuery):
 @router.callback_query(lambda c: c.data == "subscribe_true")
 async def oldim(call: types.CallbackQuery):
     await call.message.delete()
-    if await is_user_subscribed(get_channels(), call.from_user.id):
+    if await is_user_subscribed(user_id=call.from_user.id):
         await call.message.answer("Botdan foydalanishingiz mumkin😊", reply_markup=pul_ishlash())
     else:
         await call.message.answer("Iltimios! Foydalanish uchun quyidagi kanallarga a'zo bo'ling! 👇👇👇",
                                   reply_markup=subscribe_keyboard())
-
-
-@router.message()
-async def on_new_member(message: types.Message):
-    for new_member in message.new_chat_members:
-        inviter_id = message.from_user.id
-        group_id = message.chat.id
-
-        db.add_or_update_group_member(group_id, inviter_id)
-
-        await message.answer(f"{message.from_user.full_name} guruhga {new_member.full_name} ni qo'shdi.")
-        await message.answer(
-            f"{message.from_user.full_name} hozirgacha {db.get_user_add_count(group_id, inviter_id)[0]} foydalanuvchini qo'shgan.")

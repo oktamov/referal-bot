@@ -20,7 +20,6 @@ class ChatGroupFilter(BaseFilter):
 
 @router.message(F.chat.type.in_({"group", "supergroup"}))
 async def on_new_member(message: types.Message):
-    print("aaaaaaaaaaaaaaaaaaaaaaaaaaaa", message)
     for new_member in message.new_chat_members:
         inviter_id = message.from_user.id
         group_id = message.chat.id

@@ -37,6 +37,16 @@ class Database:
 """
         self.execute(sql, commit=True)
 
+    def create_table_channel(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS channel (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id VARCHAR(100) NOT NULL UNIQUE,
+            link VARCHAR(255) NOT NULL
+        );
+        """
+        self.execute(sql, commit=True)
+
     def create_table_users_invite_count(self):
         sql = '''
             CREATE TABLE IF NOT EXISTS UserInviteCount (
@@ -101,6 +111,16 @@ class Database:
         """
         self.execute(sql, parameters=(full_name, username, telegram_id), commit=True)
 
+    def add_channel(self, chat_id: int, link):
+        sql = """
+        INSERT INTO channel(chat_id, link) VALUES (?, ?)
+        """
+        self.execute(sql, parameters=(chat_id, link), commit=True)
+
+    def delete_channel(self, chat_id):
+        sql = f"DELETE FROM channel WHERE chat_id=?"
+        return self.execute(sql, parameters=(chat_id,), commit=True)
+
     def add_user_invite_count(self, user_id: int, current_count: int, history_count: int):
         sql = """
             INSERT INTO UserInviteCount(user_id, current_count, history_count) VALUES (?,?,?)
@@ -130,6 +150,12 @@ class Database:
     def select_all_users(self):
         sql = """
         SELECT * FROM Users
+        """
+        return self.execute(sql, fetchall=True)
+
+    def get_all_channels(self):
+        sql = """
+        SELECT * FROM channel
         """
         return self.execute(sql, fetchall=True)
 

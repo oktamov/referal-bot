@@ -19,3 +19,15 @@ class AdminState(StatesGroup):
 class ReferalForm(StatesGroup):
     CARD = State()
     END = State()
+
+
+class FilmAddStates(StatesGroup):
+    kod = State()
+    chekk = State()
+    film_id = State()
+    url = State()
+    chat_id = State()
+    delete_kanal = State()
+    content = State()
+    ask_ad_content = State()
+    file_name = State()

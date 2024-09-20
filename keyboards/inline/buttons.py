@@ -1,6 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from data.config import url_yaml, get_channels
+from loader import db
 
 
 def yes_no_keyboard(key):
@@ -43,11 +44,11 @@ def url_button():
 
 
 def subscribe_keyboard_invited(user_id):
-    channels = get_channels()
+    channels = db.get_all_channels()
     inline_keyboard = []
 
     for sanoq, channel in enumerate(channels, start=1):
-        button = InlineKeyboardButton(text=f"{sanoq} - kanal", url=channel['link'])
+        button = InlineKeyboardButton(text=f"{sanoq} - kanal", url=channel[2])
         inline_keyboard.append([button])
 
     inline_keyboard.append([
@@ -58,11 +59,11 @@ def subscribe_keyboard_invited(user_id):
 
 
 def subscribe_keyboard():
-    channels = get_channels()
+    channels = db.get_all_channels()
     inline_keyboard = []
 
     for sanoq, channel in enumerate(channels, start=1):
-        button = InlineKeyboardButton(text=f"{sanoq} - kanal", url=channel['link'])
+        button = InlineKeyboardButton(text=f"{sanoq} - kanal", url=channel[2])
         inline_keyboard.append([button])
 
     inline_keyboard.append([

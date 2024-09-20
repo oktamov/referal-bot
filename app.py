@@ -43,6 +43,7 @@ async def database_connected():
     # await db.create()
     # await db.drop_users()
     db.create_table_users()
+    db.create_table_channel()
     db.create_table_users_invite_count()
     db.create_table_user_invite_members()
     db.create_table_group_add_member_count()
